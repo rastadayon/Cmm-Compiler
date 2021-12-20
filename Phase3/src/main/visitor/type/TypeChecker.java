@@ -4,6 +4,12 @@ import main.ast.nodes.Program;
 import main.ast.nodes.declaration.*;
 import main.ast.nodes.declaration.struct.*;
 import main.ast.nodes.statement.*;
+import main.ast.types.ListType;
+import main.ast.types.NoType;
+import main.ast.types.Type;
+import main.ast.types.primitives.BoolType;
+import main.ast.types.primitives.IntType;
+import main.compileError.typeError.UnsupportedTypeForDisplay;
 import main.visitor.Visitor;
 
 public class TypeChecker extends Visitor<Void> {
@@ -76,7 +82,13 @@ public class TypeChecker extends Visitor<Void> {
     @Override
     public Void visit(DisplayStmt displayStmt) {
         //Todo
-        return null;
+        Type argType = displayStmt.getArg().accept(expressionTypeChecker);
+        if(!(argType instanceof IntType || argType instanceof ListType ||
+                argType instanceof BoolType || argType instanceof NoType)) {
+            UnsupportedTypeForDisplay exception = new UnsupportedTypeForDisplay(displayStmt.getLine());
+            displayStmt.addError(exception);
+        }
+        return null; // not sure if this is right
     }
 
     @Override
