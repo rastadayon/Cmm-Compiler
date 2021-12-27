@@ -24,6 +24,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     private boolean isInFunction = false;
     private boolean isInStruct = false;
     private boolean isInSetter = false;
+    private boolean isInAppendStmt = false;
     private String currentFunctionName;
     private String currentStructName;
     private String currentSetGetName;
@@ -47,15 +48,8 @@ public class ExpressionTypeChecker extends Visitor<Type> {
             else if(firstType instanceof NoType || secondType instanceof NoType) {
                 return new NoType();
             }
-            if(firstType instanceof IntType || firstType instanceof BoolType || firstType instanceof FptrType) {
-                if (firstType.toString().equals(secondType.toString())) {
-                    return new BoolType();
-                }
-            }
-            if((firstType instanceof StructType && secondType instanceof StructType)) {
-                if (((StructType) firstType).getStructName().getName().equals(((StructType) secondType).getStructName().getName())) {
-                    return new BoolType();
-                }
+            if(isFirstSubTypeOfSecondEq(secondType, firstType)) {
+                return new BoolType();
             }
         }
         if((operator == BinaryOperator.mult) || (operator == BinaryOperator.div) ||
@@ -112,28 +106,20 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         }
         if(operator == BinaryOperator.assign) {
             Expression left = binaryExpression.getFirstOperand();
-            if(!(left instanceof Identifier || left instanceof StructAccess || left instanceof ListAccessByIndex)) {
+            boolean leftIsLvalue = isLvalue(left);
+            if(!leftIsLvalue) {
                 LeftSideNotLvalue exception = new LeftSideNotLvalue(binaryExpression.getLine());
                 binaryExpression.addError(exception);
             }
             if(firstType instanceof NoType || secondType instanceof NoType) {
                 return new NoType();
             }
-            if(firstType instanceof IntType || firstType instanceof BoolType || firstType instanceof FptrType) {
-                if (firstType.toString().equals(secondType.toString())) {
-                    return firstType;
-                }
+            if(this.isFirstSubTypeOfSecond(secondType, firstType)) {
+                if(leftIsLvalue)
+                    return secondType;
+                return new NoType();
             }
-            if(firstType instanceof ListType && secondType instanceof ListType) {
-                if (((ListType) firstType).getType().equals(((ListType) secondType).getType()))
-                    return firstType;
-            }
-            if((firstType instanceof StructType && secondType instanceof StructType)) {
-                if (((StructType) firstType).getStructName().getName().equals(((StructType) secondType).getStructName().getName())) {
-                    return firstType;
-                }
-            }
-            UnsupportedOperandType exception = new UnsupportedOperandType(binaryExpression.getLine(), operator.name());
+            UnsupportedOperandType exception = new UnsupportedOperandType(binaryExpression.getLine(), BinaryOperator.assign.name());
             binaryExpression.addError(exception);
             return new NoType();
         }
@@ -192,7 +178,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 funcCall.addError(exception);
                 hasError = true;
             }
-            if(this.hasSameArgTypes(argsTypes, actualArgsTypes)) {
+            if(this.isFirstSubTypeOfSecondMultiple(argsTypes, actualArgsTypes)) {
                 if(hasError)
                     return new NoType();
                 return returnType;
@@ -209,16 +195,20 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     public Type visit(Identifier identifier) {
         //Todo: done:)
         String varName = identifier.getName();
-        if(isInFunction) {
+        /*if(isInFunction) {
             try {
                 String key = FunctionSymbolTableItem.START_KEY + currentFunctionName;
                 FunctionSymbolTableItem functionSymbolTableItem = (FunctionSymbolTableItem) SymbolTable.root.getItem(key);
                 SymbolTable functionSymbolTable = functionSymbolTableItem.getFunctionSymbolTable();
                 String varKey = VariableSymbolTableItem.START_KEY + varName;
-                VariableSymbolTableItem varSym = (VariableSymbolTableItem) functionSymbolTable.getItem(varKey);
+                VariableSymbolTableItem varSym = (VariableSymbolTableItem) functionSymbolTable.root.getItem(varKey);
                 return varSym.getType();
-            } catch (ItemNotFoundException e) {}
-        }
+            } catch (ItemNotFoundException e) {
+                VarNotDeclared exception = new VarNotDeclared(identifier.getLine(), varName);
+                identifier.addError(exception);
+                return new NoType();
+            }
+        }*/
         if(isInStruct) {
             try {
                 String key = StructSymbolTableItem.START_KEY + currentStructName;
@@ -232,7 +222,11 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                         SymbolTable funcSym = functionSymbolTableItem.getFunctionSymbolTable();
                         VariableSymbolTableItem varSym = (VariableSymbolTableItem) funcSym.getItem(varKey);
                         return varSym.getType();
-                    } catch (ItemNotFoundException e) {}
+                    } catch (ItemNotFoundException e) {
+                        VarNotDeclared exception = new VarNotDeclared(identifier.getLine(), varName);
+                        identifier.addError(exception);
+                        return new NoType();
+                    }
                 }
                 VariableSymbolTableItem varSym = (VariableSymbolTableItem) structSym.getItem(varKey);
                 return varSym.getType();
@@ -336,11 +330,22 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     @Override
     public Type visit(ListAppend listAppend) {
         //Todo: done:)
+        boolean hasError = false;
+        if(!isInAppendStmt) {
+            CantUseValueOfVoidFunction expression = new CantUseValueOfVoidFunction(listAppend.getLine());
+            listAppend.addError(expression);
+            hasError = true;
+        }
         Type listArgType = listAppend.getListArg().accept(this);
         Type elementArgType = listAppend.getElementArg().accept(this);
+        if(listArgType instanceof NoType) {
+            return new NoType();
+        }
         if(listArgType instanceof ListType) {
             Type neededElementType = ((ListType) listArgType).getType();
-            if(elementArgType.toString().equals(neededElementType.toString())) {
+            if(isFirstSubTypeOfSecond(elementArgType, neededElementType)){
+                if(hasError)
+                    return new NoType();
                 return new VoidType();
             }
             else {
@@ -372,18 +377,88 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         return new BoolType();
     }
 
-    public boolean hasSameArgTypes(ArrayList<Type> first, ArrayList<Type> second) {
+    public boolean isFirstSubTypeOfSecondMultiple(ArrayList<Type> first, ArrayList<Type> second) {
         if(first.size() != second.size())
             return false;
         for(int i = 0; i < first.size(); i++) {
-            if(! first.get(i).equals(second.get(i)))
+            if(!isFirstSubTypeOfSecond(first.get(i), second.get(i)))
                 return false;
+        }
+        return true;
+    }
+
+    public boolean isFirstSubTypeOfSecond(Type first, Type second) {
+        if(first instanceof NoType)
+            return true;
+        else if(first instanceof IntType || first instanceof BoolType)
+            return first.toString().equals(second.toString());
+        else if(first instanceof StructType) {
+            if(!(second instanceof StructType))
+                return false;
+            return ((StructType) first).getStructName().getName().equals(((StructType) second).getStructName().getName());
+        }
+        else if(first instanceof FptrType) {
+            if(!(second instanceof FptrType))
+                return false;
+            Type firstRetType = ((FptrType) first).getReturnType();
+            Type secondRetType = ((FptrType) second).getReturnType();
+            if(!isFirstSubTypeOfSecond(firstRetType, secondRetType))
+                return false;
+            ArrayList<Type> firstArgsTypes = ((FptrType) first).getArgsType();
+            ArrayList<Type> secondArgsTypes = ((FptrType) second).getArgsType();
+            return isFirstSubTypeOfSecondMultiple(secondArgsTypes, firstArgsTypes);
+        }
+        else if(first instanceof ListType) {
+            if(!(second instanceof ListType))
+                return false;
+            Type firstElement = ((ListType) first).getType();
+            Type secondElement = ((ListType) second).getType();
+            if (!isFirstSubTypeOfSecond(firstElement, secondElement))
+                return false;
+
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isFirstSubTypeOfSecondEq(Type first, Type second) {
+        if(first instanceof NoType)
+            return true;
+        else if(first instanceof IntType || first instanceof BoolType)
+            return first.toString().equals(second.toString());
+        else if(first instanceof StructType) {
+            if(!(second instanceof StructType))
+                return false;
+            return ((StructType) first).getStructName().getName().equals(((StructType) second).getStructName().getName());
+        }
+        else if(first instanceof FptrType) {
+            if(!(second instanceof FptrType))
+                return false;
+            Type firstRetType = ((FptrType) first).getReturnType();
+            Type secondRetType = ((FptrType) second).getReturnType();
+            if(!isFirstSubTypeOfSecond(firstRetType, secondRetType))
+                return false;
+            ArrayList<Type> firstArgsTypes = ((FptrType) first).getArgsType();
+            ArrayList<Type> secondArgsTypes = ((FptrType) second).getArgsType();
+            return isFirstSubTypeOfSecondMultiple(secondArgsTypes, firstArgsTypes);
+        }
+        return false;
+    }
+
+    public boolean isLvalue(Expression expression) {
+        if(!(expression instanceof Identifier || expression instanceof StructAccess ||
+                expression instanceof ListAccessByIndex)) {
+            return false;
         }
         return true;
     }
 
     public void setIsInFuncCallStmt(boolean isInFuncCallStmt) {
         this.isInFuncCallStmt = isInFuncCallStmt;
+    }
+
+    public void setIsInAppendStmt(boolean isInAppendStmt) {
+        this.isInAppendStmt = isInAppendStmt;
     }
 
     public void setIsInFunction(boolean isInFunction) {
