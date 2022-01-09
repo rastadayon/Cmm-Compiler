@@ -14,6 +14,8 @@ import main.symbolTable.*;
 import main.symbolTable.exceptions.*;
 import main.visitor.Visitor;
 import main.visitor.type.ExpressionTypeChecker;
+import main.visitor.type.TypeChecker;
+
 import java.io.*;
 import java.util.*;
 
@@ -22,7 +24,8 @@ public class  CodeGenerator extends Visitor<String> {
     private String outputPath;
     private FileWriter currentFile;
     private Declaration currentFunction;
-    private int tempVarSlot;
+    private int tempVarSlot = 0;
+    private int labelCounter = 0;
 
 
     private void copyFile(String toBeCopied, String toBePasted) {
@@ -204,19 +207,36 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(AssignmentStmt assignmentStmt) {
-        //todo
+        //todo: done:)
+        String commands = this.visit(new BinaryExpression(assignmentStmt.getLValue(), assignmentStmt.getRValue(), BinaryOperator.assign));
+        addCommand(commands);
+        addCommand("pop");
         return null;
     }
 
     @Override
     public String visit(BlockStmt blockStmt) {
-        //todo
+        //todo: done:)
+        for (Statement statement: blockStmt.getStatements()) {
+            statement.accept(this);
+        }
         return null;
     }
 
     @Override
     public String visit(ConditionalStmt conditionalStmt) {
-        //todo
+        //todo: done:?
+        String elseLabel = getFreshLabel();
+        String exitLabel = getFreshLabel();
+        addCommand(conditionalStmt.getCondition().accept(this));
+        addCommand("ifeq " + elseLabel);
+        conditionalStmt.getThenBody().accept(this);
+        //if(!(conditionalStmt.getThenBody().accept(this.typeChecker)).doesReturn)
+        addCommand("goto " + exitLabel);
+        addCommand(elseLabel + ":");
+        if(conditionalStmt.getElseBody() != null)
+            conditionalStmt.getElseBody().accept(this);
+        addCommand(exitLabel + ":");
         return null;
     }
 
@@ -255,19 +275,27 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(VarDecStmt varDecStmt) {
-        //todo
+        //todo: done:)
+        for (VariableDeclaration varDec : varDecStmt.getVars()) {
+            varDec.accept(this);
+        }
         return null;
     }
 
     @Override
     public String visit(ListAppendStmt listAppendStmt) {
-        //todo
+        //todo: done:)
+        this.expressionTypeChecker.setInFunctionCallStmt(true);
+        listAppendStmt.getListAppendExpr().accept(this);
+        this.expressionTypeChecker.setInFunctionCallStmt(false);
         return null;
     }
 
     @Override
     public String visit(ListSizeStmt listSizeStmt) {
-        //todo
+        //todo: done:)
+        listSizeStmt.accept(this);
+        addCommand("pop");
         return null;
     }
 
@@ -334,5 +362,9 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(ExprInPar exprInPar) {
         return exprInPar.getInputs().get(0).accept(this);
+    }
+
+    private String getFreshLabel() {
+        return "Label_" + this.labelCounter++;
     }
 }
