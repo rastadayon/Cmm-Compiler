@@ -21,6 +21,8 @@ public class  CodeGenerator extends Visitor<String> {
     ExpressionTypeChecker expressionTypeChecker = new ExpressionTypeChecker();
     private String outputPath;
     private FileWriter currentFile;
+    private FunctionDeclaration currentFunction;
+    private int tempVarSlot;
 
     private void copyFile(String toBeCopied, String toBePasted) {
         try {
@@ -95,8 +97,37 @@ public class  CodeGenerator extends Visitor<String> {
     }
 
     private int slotOf(String identifier) {
-        //todo
-        return 0;
+        //todo: done:)
+        int count = 1;
+        if(currentFunction == null)
+            return tempVarSlot++;
+        for (VariableDeclaration varDeclaration : currentFunction.getArgs()) {
+            if (varDeclaration.getVarName().getName().equals(identifier))
+                return count;
+            count++;
+        }
+        if(currentFunction.getBody() instanceof BlockStmt) {
+            for (Statement statement : ((BlockStmt) currentFunction.getBody()).getStatements()) {
+                if (statement instanceof VarDecStmt) {
+                    for (VariableDeclaration varDec : ((VarDecStmt) statement).getVars()) {
+                        if (varDec.getVarName().getName().equals(identifier))
+                            return count;
+                        count++;
+                    }
+                }
+                else
+                    break;
+            }
+        }
+        else if (currentFunction.getBody() instanceof VarDecStmt) {
+            for (VariableDeclaration varDec : ((VarDecStmt) currentFunction.getBody()).getVars()) {
+                if (varDec.getVarName().getName().equals(identifier))
+                    return count;
+                count++;
+            }
+        }
+        //first empty var
+        return count + (tempVarSlot++);
     }
 
     @Override
@@ -265,14 +296,15 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(IntValue intValue) {
-        //todo
-        return null;
+        //todo: done:)
+        return "ldc " + intValue.getConstant();
     }
 
     @Override
     public String visit(BoolValue boolValue) {
-        //todo
-        return null;
+        //todo: done:)
+        int boolIntVal = (boolValue.getConstant()) ? 1 : 0;
+        return "ldc " + boolIntVal;
     }
 
     @Override
