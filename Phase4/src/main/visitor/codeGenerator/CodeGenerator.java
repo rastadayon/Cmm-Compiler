@@ -21,10 +21,10 @@ public class  CodeGenerator extends Visitor<String> {
     ExpressionTypeChecker expressionTypeChecker = new ExpressionTypeChecker();
     private String outputPath;
     private FileWriter currentFile;
-    private FunctionDeclaration currentFunction;
+    private Declaration currentFunction;
     private int tempVarSlot;
 
-    
+
     private void copyFile(String toBeCopied, String toBePasted) {
         try {
             File readingFile = new File(toBeCopied);
@@ -102,29 +102,49 @@ public class  CodeGenerator extends Visitor<String> {
         int count = 1;
         if(currentFunction == null)
             return tempVarSlot++;
-        for (VariableDeclaration varDeclaration : currentFunction.getArgs()) {
-            if (varDeclaration.getVarName().getName().equals(identifier))
-                return count;
-            count++;
-        }
-        if(currentFunction.getBody() instanceof BlockStmt) {
-            for (Statement statement : ((BlockStmt) currentFunction.getBody()).getStatements()) {
-                if (statement instanceof VarDecStmt) {
-                    for (VariableDeclaration varDec : ((VarDecStmt) statement).getVars()) {
-                        if (varDec.getVarName().getName().equals(identifier))
-                            return count;
-                        count++;
-                    }
-                }
-                else
-                    break;
-            }
-        }
-        else if (currentFunction.getBody() instanceof VarDecStmt) {
-            for (VariableDeclaration varDec : ((VarDecStmt) currentFunction.getBody()).getVars()) {
-                if (varDec.getVarName().getName().equals(identifier))
+        if(currentFunction instanceof FunctionDeclaration) {
+            for (VariableDeclaration varDeclaration : ((FunctionDeclaration) currentFunction).getArgs()) {
+                if (varDeclaration.getVarName().getName().equals(identifier))
                     return count;
                 count++;
+            }
+            if (((FunctionDeclaration) currentFunction).getBody() instanceof BlockStmt) {
+                for (Statement statement : ((BlockStmt) ((FunctionDeclaration) currentFunction).getBody()).getStatements()) {
+                    if (statement instanceof VarDecStmt) {
+                        for (VariableDeclaration varDec : ((VarDecStmt) statement).getVars()) {
+                            if (varDec.getVarName().getName().equals(identifier))
+                                return count;
+                            count++;
+                        }
+                    } else
+                        break;
+                }
+            } else if (((FunctionDeclaration) currentFunction).getBody() instanceof VarDecStmt) {
+                for (VariableDeclaration varDec : ((VarDecStmt) ((FunctionDeclaration) currentFunction).getBody()).getVars()) {
+                    if (varDec.getVarName().getName().equals(identifier))
+                        return count;
+                    count++;
+                }
+            }
+        }
+        else if (currentFunction instanceof MainDeclaration) {
+            if (((MainDeclaration) currentFunction).getBody() instanceof BlockStmt) {
+                for (Statement statement : ((BlockStmt) ((MainDeclaration) currentFunction).getBody()).getStatements()) {
+                    if (statement instanceof VarDecStmt) {
+                        for (VariableDeclaration varDec : ((VarDecStmt) statement).getVars()) {
+                            if (varDec.getVarName().getName().equals(identifier))
+                                return count;
+                            count++;
+                        }
+                    } else
+                        break;
+                }
+            } else if (((MainDeclaration) currentFunction).getBody() instanceof VarDecStmt) {
+                for (VariableDeclaration varDec : ((VarDecStmt) ((MainDeclaration) currentFunction).getBody()).getVars()) {
+                    if (varDec.getVarName().getName().equals(identifier))
+                        return count;
+                    count++;
+                }
             }
         }
         //first empty var
