@@ -27,6 +27,11 @@ public class  CodeGenerator extends Visitor<String> {
     private int tempVarSlot = 0;
     private int labelCounter = 0;
 
+    private String STRUCT_PARENT = "java/lang/Object";
+    private String int_TO_Int_COMMAND = "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;";
+    private String Int_TO_int_COMMAND = "invokevirtual java/lang/Integer/intValue()I";
+    private String bool_TO_Bool_COMMAND = "invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;";
+    private String Bool_TO_bool_COMMAND = "invokevirtual java/lang/Boolean/booleanValue()Z";
 
     private void copyFile(String toBeCopied, String toBePasted) {
         try {
@@ -176,9 +181,12 @@ public class  CodeGenerator extends Visitor<String> {
     public String visit(StructDeclaration structDeclaration) {
         createFile(structDeclaration.getStructName().getName());
         //todo
-        String structName = structDeclaration.getStructName().toString();
-        createFile(structName);
-        addCommand("");
+//        String structName = structDeclaration.getStructName().toString();
+//        createFile(structName);
+//        addCommand(String.format(".class %s", structName));
+//        addCommand(String.format(".super %s", STRUCT_PARENT));
+//
+//        structDeclaration.get
         return null;
     }
 
@@ -267,7 +275,17 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(ReturnStmt returnStmt) {
-        //todo
+        //todo: done:)
+        Type type = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
+        addCommand(returnStmt.getReturnedExpr().accept(this));
+        if (type instanceof VoidType)
+            addCommand("return");
+        else {
+            if (type instanceof IntType || type instanceof BoolType) {
+                addCommand(convertPrimitiveToJavaObj(type));
+            }
+            addCommand("areturn");
+        }
         return null;
     }
 
@@ -329,6 +347,23 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(ListAccessByIndex listAccessByIndex){
         //todo
+//        String commands = "";
+//        commands += listAccessByIndex.getInstance().accept(this);
+//        commands += listAccessByIndex.getIndex().accept(this);
+//        commands += "invokevirtual List/getElement(I)Ljava/lang/Object;\n";
+//        Type instanceType = listAccessByIndex.getInstance().accept(expressionTypeChecker);
+//        int typeIndex;
+//        if (!(listAccessByIndex.getIndex() instanceof IntValue)) {
+//            typeIndex = 0;
+//        } else {
+//            typeIndex = ((IntValue) listAccessByIndex.getIndex()).getConstant();
+//        }
+//        Type elementType = ((ListType) instanceType).getType().get(typeIndex).getType();
+//        commands += castObject(elementType);
+//        commands += "\n";
+//        commands += convertJavaObjToPrimitive(elementType);
+//        commands += "\n";
+//        return commands;
         return null;
     }
 
@@ -370,5 +405,14 @@ public class  CodeGenerator extends Visitor<String> {
 
     private String getFreshLabel() {
         return "Label_" + this.labelCounter++;
+    }
+
+    private String convertPrimitiveToJavaObj(Type t) {
+        if (t instanceof IntType)
+            return int_TO_Int_COMMAND;
+        else if (t instanceof BoolType)
+            return bool_TO_Bool_COMMAND;
+
+        return "";
     }
 }
