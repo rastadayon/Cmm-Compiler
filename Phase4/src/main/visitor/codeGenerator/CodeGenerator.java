@@ -242,7 +242,11 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(FunctionCallStmt functionCallStmt) {
-        //todo
+        //todo: done:)
+        this.expressionTypeChecker.setInFunctionCallStmt(true);
+        functionCallStmt.getFunctionCall().accept(this);
+        this.expressionTypeChecker.setInFunctionCallStmt(false);
+        addCommand("pop");
         return null;
     }
 
