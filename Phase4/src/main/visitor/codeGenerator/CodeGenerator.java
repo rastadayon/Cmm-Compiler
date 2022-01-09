@@ -21,6 +21,7 @@ public class  CodeGenerator extends Visitor<String> {
     ExpressionTypeChecker expressionTypeChecker = new ExpressionTypeChecker();
     private String outputPath;
     private FileWriter currentFile;
+    private FunctionDeclaration currentFunction;
 
     private void copyFile(String toBeCopied, String toBePasted) {
         try {
@@ -121,6 +122,9 @@ public class  CodeGenerator extends Visitor<String> {
     public String visit(StructDeclaration structDeclaration) {
         createFile(structDeclaration.getStructName().getName());
         //todo
+        String structName = structDeclaration.getStructName().toString();
+        createFile(structName);
+        addCommand("");
         return null;
     }
 
