@@ -155,7 +155,7 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         //Todo: done:)
         Type instanceType = funcCall.getInstance().accept(this);
         boolean prevIsInFunCallStmt = this.isInFuncCallStmt;
-        this.setIsInFuncCallStmt(false);
+        this.setIsInFuncCallStmt(false); //chera inja ro false mikonim?
         ArrayList<Type> argsTypes = new ArrayList<>();
         for(Expression arg : funcCall.getArgs()) {
             argsTypes.add(arg.accept(this));

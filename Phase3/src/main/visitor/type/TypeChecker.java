@@ -46,7 +46,7 @@ public class TypeChecker extends Visitor<Void> {
         for (StructDeclaration structDeclaration: program.getStructs())
             structDeclaration.accept(this);
         for (FunctionDeclaration functionDeclaration:program.getFunctions()) {
-            this.currentFunction = functionDeclaration;
+                this.currentFunction = functionDeclaration;
             functionDeclaration.accept(this);
         }
         program.getMain().accept(this);
