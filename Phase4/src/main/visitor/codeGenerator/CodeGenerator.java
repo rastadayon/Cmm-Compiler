@@ -369,17 +369,17 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(ListAccessByIndex listAccessByIndex){
-        //todo
+        //todo: done:)
         String commands = "";
         commands += listAccessByIndex.getInstance().accept(this) + "\n";
         commands += listAccessByIndex.getIndex().accept(this) + "\n";
         Type type = listAccessByIndex.accept(expressionTypeChecker);
         commands += "invokevirtual List/getElement(I)Ljava/lang/Object;\n";
-        commands += "checkcast " + getClass(type);
+        commands += castObject(type);
         if(type instanceof IntType)
-            commands += "\ninvokevirtual java/lang/Integer/intValue()I";
+            commands += "\n" + Int_TO_int_COMMAND;
         else if(type instanceof BoolType)
-            commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
+            commands += "\n" + Bool_TO_bool_COMMAND;
         return commands;
     }
 
@@ -429,6 +429,25 @@ public class  CodeGenerator extends Visitor<String> {
         else if (t instanceof BoolType)
             return bool_TO_Bool_COMMAND;
 
+        return "";
+    }
+
+    private String castObject(Type t) {
+        return "checkcast " + getClass(t);
+    }
+
+    private String getClass(Type t) {
+        if(t instanceof ListType)
+            return "List";
+        else if(t instanceof IntType)
+            return "java/lang/Integer";
+        else if(t instanceof FptrType)
+            return "Fptr";
+        else if(t instanceof BoolType)
+            return "java/lang/Boolean";
+        else if(t instanceof StructType){
+            return ((StructType) t).getStructName().getName();
+        }
         return "";
     }
 }
