@@ -29,6 +29,8 @@ public class  CodeGenerator extends Visitor<String> {
     private StructDeclaration currentStruct;
     private int tempVarSlot = 0;
     private int labelCounter = 0;
+    private boolean isInStruct = false;
+    private boolean hasReturn = false;
 
     private String STRUCT_PARENT = "java/lang/Object";
     private String int_TO_Int_COMMAND = "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;";
@@ -198,28 +200,36 @@ public class  CodeGenerator extends Visitor<String> {
         addCommand(".class public " + structName );
         addCommand(".super java/lang/Object\n ");
 
-        Statement structBody = structDeclaration.getBody();
-        if (structBody instanceof BlockStmt) {
-            for (Statement stmt: ((BlockStmt) structBody).getStatements()) {
-                if (stmt instanceof VarDecStmt) {
-                    for (VariableDeclaration varDec: ((VarDecStmt) stmt).getVars()) {
-                        addCommand(".field " + varDec.getVarName().getName()
-                                + " " + makeTypeSignature(varDec.getVarType()));
-                    }
-                }
-
-            }
-        }
-        else if (structBody instanceof Statement) {
-            if (structBody instanceof VarDecStmt) {
-                for (VariableDeclaration varDec: ((VarDecStmt) structBody).getVars()) {
-                    addCommand(".field " + varDec.getVarName().getName()
-                            + " " + makeTypeSignature(varDec.getVarType()));
-                }
-            }
-        }
-
+        structDeclaration.getBody().accept(this);
         addDefaultConstructor();
+
+        SymbolTable.pop();
+        return null;
+    }
+
+    @Override
+    public String visit(FunctionDeclaration functionDeclaration) {
+        try{
+            String functionKey = FunctionSymbolTableItem.START_KEY + functionDeclaration.getFunctionName().getName();
+            FunctionSymbolTableItem functionSymbolTableItem = (FunctionSymbolTableItem)SymbolTable.root.getItem(functionKey);
+            SymbolTable.push(functionSymbolTableItem.getFunctionSymbolTable());
+        }catch (ItemNotFoundException e){//unreachable
+        }
+
+        //todo: done:)
+        String argsSignature = "";
+        for(VariableDeclaration arg : functionDeclaration.getArgs())
+            argsSignature += makeTypeSignature(arg.getVarType());
+        addCommand(".method public " + functionDeclaration.getFunctionName().getName() + "(" + argsSignature + ")" + makeTypeSignature(functionDeclaration.getReturnType()));
+        addCommand(".limit stack 128");
+        addCommand(".limit locals 128");
+
+        functionDeclaration.getBody().accept(this);
+        if(!hasReturn)
+            addCommand("return");
+        else
+            hasReturn = false;
+        addCommand(".end method\n ");
 
         SymbolTable.pop();
         return null;
@@ -233,14 +243,22 @@ public class  CodeGenerator extends Visitor<String> {
             SymbolTable.push(functionSymbolTableItem.getFunctionSymbolTable());
         }catch (ItemNotFoundException e){//unreachable
         }
+
         //todo
+
         SymbolTable.pop();
         return null;
     }
 
     @Override
     public String visit(VariableDeclaration variableDeclaration) {
-        //todo
+        //todo: done:)
+        if (isInStruct) {
+            addCommand(".field " + variableDeclaration.getVarName().getName()
+                    + " " + makeTypeSignature(variableDeclaration.getVarType()));
+        }
+        else
+            this.initializeVar(variableDeclaration, false);
         return null;
     }
 
@@ -312,11 +330,12 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(ReturnStmt returnStmt) {
         //todo: done:)
-        Type type = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
-        addCommand(returnStmt.getReturnedExpr().accept(this));
-        if (type instanceof VoidType)
+        hasReturn = true;
+        if (returnStmt.getReturnedExpr() == null)
             addCommand("return");
         else {
+            Type type = returnStmt.getReturnedExpr().accept(expressionTypeChecker);
+            addCommand(returnStmt.getReturnedExpr().accept(this));
             if (type instanceof IntType || type instanceof BoolType) {
                 addCommand(convertPrimitiveToJavaObj(type));
             }
