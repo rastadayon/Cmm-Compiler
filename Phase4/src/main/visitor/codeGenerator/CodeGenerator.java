@@ -14,6 +14,7 @@ import main.symbolTable.*;
 import main.symbolTable.exceptions.*;
 import main.symbolTable.items.FunctionSymbolTableItem;
 import main.symbolTable.items.StructSymbolTableItem;
+import main.symbolTable.items.SymbolTableItem;
 import main.visitor.Visitor;
 import main.visitor.type.ExpressionTypeChecker;
 import main.visitor.type.TypeChecker;
@@ -409,7 +410,21 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(Identifier identifier){
         //todo
-        return null;
+        String commands = "";
+        try {
+            String key = FunctionSymbolTableItem.START_KEY + identifier.getName();
+            FunctionSymbolTableItem funcSymItem = (FunctionSymbolTableItem) SymbolTable.root.getItem(key);
+            //Type type = new FptrType(funcSymItem.getArgTypes(), funcSymItem.getReturnType());
+        } catch (ItemNotFoundException e) {
+            Type type = identifier.accept(expressionTypeChecker);
+            commands += "aload " + slotOf(identifier.getName());
+            if(type instanceof IntType)
+                commands += "\ninvokevirtual java/lang/Integer/intValue()I";
+            else if(type instanceof  BoolType)
+                commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
+            return commands;
+        }
+        return commands;
     }
 
     @Override
