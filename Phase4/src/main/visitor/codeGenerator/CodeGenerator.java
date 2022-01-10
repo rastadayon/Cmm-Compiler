@@ -12,6 +12,8 @@ import main.ast.types.*;
 import main.ast.types.primitives.*;
 import main.symbolTable.*;
 import main.symbolTable.exceptions.*;
+import main.symbolTable.items.FunctionSymbolTableItem;
+import main.symbolTable.items.StructSymbolTableItem;
 import main.visitor.Visitor;
 import main.visitor.type.ExpressionTypeChecker;
 import main.visitor.type.TypeChecker;
@@ -179,6 +181,12 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(StructDeclaration structDeclaration) {
+        try{
+            String structKey = StructSymbolTableItem.START_KEY + structDeclaration.getStructName().getName();
+            StructSymbolTableItem structSymbolTableItem = (StructSymbolTableItem)SymbolTable.root.getItem(structKey);
+            SymbolTable.push(structSymbolTableItem.getStructSymbolTable());
+        }catch (ItemNotFoundException e){//unreachable
+        }
         createFile(structDeclaration.getStructName().getName());
         //todo
 //        String structName = structDeclaration.getStructName().toString();
@@ -187,18 +195,33 @@ public class  CodeGenerator extends Visitor<String> {
 //        addCommand(String.format(".super %s", STRUCT_PARENT));
 //
 //        structDeclaration.get
+        SymbolTable.pop();
         return null;
     }
 
     @Override
     public String visit(FunctionDeclaration functionDeclaration) {
+        try{
+            String functionKey = FunctionSymbolTableItem.START_KEY + functionDeclaration.getFunctionName().getName();
+            FunctionSymbolTableItem functionSymbolTableItem = (FunctionSymbolTableItem)SymbolTable.root.getItem(functionKey);
+            SymbolTable.push(functionSymbolTableItem.getFunctionSymbolTable());
+        }catch (ItemNotFoundException e){//unreachable
+        }
         //todo
+        SymbolTable.pop();
         return null;
     }
 
     @Override
     public String visit(MainDeclaration mainDeclaration) {
+        try{
+            String functionKey = FunctionSymbolTableItem.START_KEY + "main";
+            FunctionSymbolTableItem functionSymbolTableItem = (FunctionSymbolTableItem)SymbolTable.root.getItem(functionKey);
+            SymbolTable.push(functionSymbolTableItem.getFunctionSymbolTable());
+        }catch (ItemNotFoundException e){//unreachable
+        }
         //todo
+        SymbolTable.pop();
         return null;
     }
 
@@ -347,24 +370,17 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(ListAccessByIndex listAccessByIndex){
         //todo
-//        String commands = "";
-//        commands += listAccessByIndex.getInstance().accept(this);
-//        commands += listAccessByIndex.getIndex().accept(this);
-//        commands += "invokevirtual List/getElement(I)Ljava/lang/Object;\n";
-//        Type instanceType = listAccessByIndex.getInstance().accept(expressionTypeChecker);
-//        int typeIndex;
-//        if (!(listAccessByIndex.getIndex() instanceof IntValue)) {
-//            typeIndex = 0;
-//        } else {
-//            typeIndex = ((IntValue) listAccessByIndex.getIndex()).getConstant();
-//        }
-//        Type elementType = ((ListType) instanceType).getType().get(typeIndex).getType();
-//        commands += castObject(elementType);
-//        commands += "\n";
-//        commands += convertJavaObjToPrimitive(elementType);
-//        commands += "\n";
-//        return commands;
-        return null;
+        String commands = "";
+        commands += listAccessByIndex.getInstance().accept(this) + "\n";
+        commands += listAccessByIndex.getIndex().accept(this) + "\n";
+        Type type = listAccessByIndex.accept(expressionTypeChecker);
+        commands += "invokevirtual List/getElement(I)Ljava/lang/Object;\n";
+        commands += "checkcast " + getClass(type);
+        if(type instanceof IntType)
+            commands += "\ninvokevirtual java/lang/Integer/intValue()I";
+        else if(type instanceof BoolType)
+            commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
+        return commands;
     }
 
     @Override
