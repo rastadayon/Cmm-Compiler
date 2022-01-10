@@ -26,6 +26,7 @@ public class  CodeGenerator extends Visitor<String> {
     private String outputPath;
     private FileWriter currentFile;
     private Declaration currentFunction;
+    private StructDeclaration currentStruct;
     private int tempVarSlot = 0;
     private int labelCounter = 0;
 
@@ -166,14 +167,17 @@ public class  CodeGenerator extends Visitor<String> {
         prepareOutputFolder();
 
         for(StructDeclaration structDeclaration : program.getStructs()){
+            this.currentStruct = structDeclaration;
             structDeclaration.accept(this);
         }
 
         createFile("Main");
 
+        this.currentFunction = program.getMain();
         program.getMain().accept(this);
 
         for (FunctionDeclaration functionDeclaration: program.getFunctions()){
+            this.currentFunction = functionDeclaration;
             functionDeclaration.accept(this);
         }
         return null;
@@ -188,26 +192,35 @@ public class  CodeGenerator extends Visitor<String> {
         }catch (ItemNotFoundException e){//unreachable
         }
         createFile(structDeclaration.getStructName().getName());
-        //todo
-//        String structName = structDeclaration.getStructName().toString();
-//        createFile(structName);
-//        addCommand(String.format(".class %s", structName));
-//        addCommand(String.format(".super %s", STRUCT_PARENT));
-//
-//        structDeclaration.get
-        SymbolTable.pop();
-        return null;
-    }
 
-    @Override
-    public String visit(FunctionDeclaration functionDeclaration) {
-        try{
-            String functionKey = FunctionSymbolTableItem.START_KEY + functionDeclaration.getFunctionName().getName();
-            FunctionSymbolTableItem functionSymbolTableItem = (FunctionSymbolTableItem)SymbolTable.root.getItem(functionKey);
-            SymbolTable.push(functionSymbolTableItem.getFunctionSymbolTable());
-        }catch (ItemNotFoundException e){//unreachable
+        //todo: done:? list values
+        String structName = structDeclaration.getStructName().getName();
+        addCommand(".class public " + structName );
+        addCommand(".super java/lang/Object\n ");
+
+        Statement structBody = structDeclaration.getBody();
+        if (structBody instanceof BlockStmt) {
+            for (Statement stmt: ((BlockStmt) structBody).getStatements()) {
+                if (stmt instanceof VarDecStmt) {
+                    for (VariableDeclaration varDec: ((VarDecStmt) stmt).getVars()) {
+                        addCommand(".field " + varDec.getVarName().getName()
+                                + " " + makeTypeSignature(varDec.getVarType()));
+                    }
+                }
+
+            }
         }
-        //todo
+        else if (structBody instanceof Statement) {
+            if (structBody instanceof VarDecStmt) {
+                for (VariableDeclaration varDec: ((VarDecStmt) structBody).getVars()) {
+                    addCommand(".field " + varDec.getVarName().getName()
+                            + " " + makeTypeSignature(varDec.getVarType()));
+                }
+            }
+        }
+
+        addDefaultConstructor();
+
         SymbolTable.pop();
         return null;
     }
@@ -449,5 +462,87 @@ public class  CodeGenerator extends Visitor<String> {
             return ((StructType) t).getStructName().getName();
         }
         return "";
+    }
+
+    private String makeTypeSignature(Type t) {
+        if(t instanceof VoidType)
+            return "V";
+        else
+            return "L" + getClass(t) + ";";
+    }
+
+    private void addDefaultConstructor() {
+        addCommand(".method public <init>()V");
+        addCommand(".limit stack 128");
+        addCommand(".limit locals 128");
+        addCommand("aload 0");
+        addCommand("invokespecial java/lang/Object/<init>()V");
+        Statement structBody = currentStruct.getBody();
+        if (structBody instanceof BlockStmt) {
+            for (Statement stmt: ((BlockStmt) structBody).getStatements()) {
+                if (stmt instanceof VarDecStmt) {
+                    for (VariableDeclaration varDec: ((VarDecStmt) stmt).getVars()) {
+                        this.initializeVar(varDec, true);
+                    }
+                }
+
+            }
+        }
+        else if (structBody instanceof Statement) {
+            if (structBody instanceof VarDecStmt) {
+                for (VariableDeclaration varDec: ((VarDecStmt) structBody).getVars()) {
+                    this.initializeVar(varDec, true);
+                }
+            }
+        }
+        addCommand("return");
+        addCommand(".end method\n ");
+    }
+
+    private void initializeVar(VariableDeclaration varDeclaration, boolean isField) {
+        Type type = varDeclaration.getVarType();
+        String name = varDeclaration.getVarName().getName();
+        String structName = currentStruct.getStructName().getName();
+        if(isField)
+            addCommand("aload 0");
+        addCommand(this.generateValue(varDeclaration.getDefaultValue(), type));
+        if(type instanceof IntType)
+            addCommand("invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;");
+        else if(type instanceof BoolType)
+            addCommand("invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;");
+        if(isField)
+            addCommand("putfield " + structName + "/" + name + " " + makeTypeSignature(type));
+        else
+            addCommand("astore " + slotOf(varDeclaration.getVarName().getName()));
+    }
+
+    private String generateValue(Expression expr, Type type) {
+        if(type instanceof IntType) {
+            if(expr == null)
+                return this.visit(new IntValue(0));
+            else
+                return expr.accept(this);
+        }
+        else if(type instanceof BoolType) {
+            if(expr == null)
+                return this.visit(new BoolValue(false));
+            else
+                return expr.accept(this);
+        }
+        else if(type instanceof StructType || type instanceof FptrType || type instanceof VoidType) {
+            if(expr == null)
+                return "aconst_null";
+            else
+                return expr.accept(this);
+        }
+        else if(type instanceof ListType) {
+            String commands = "";
+            commands += "new java/util/ArrayList\n";
+            commands += "dup\n";
+            commands += "invokespecial java/util/ArrayList/<Object>()V\n";
+            int tempVar = slotOf("");
+            commands += "astore " + tempVar + "\n";
+        }
+        return null;
     }
 }
