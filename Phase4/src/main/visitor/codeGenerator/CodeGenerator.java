@@ -244,7 +244,20 @@ public class  CodeGenerator extends Visitor<String> {
         }catch (ItemNotFoundException e){//unreachable
         }
 
-        //todo
+        //todo: done:)
+        String argsSignature = "";
+        addCommand(".method public <init>(" + argsSignature + ")V");
+        addCommand(".limit stack 128");
+        addCommand(".limit locals 128");
+
+        addCommand("invokespecial java/lang/Object/<init>()V");
+
+        mainDeclaration.getBody().accept(this);
+        if(!hasReturn)
+            addCommand("return");
+        else
+            hasReturn = false;
+        addCommand(".end method\n ");
 
         SymbolTable.pop();
         return null;
@@ -521,7 +534,6 @@ public class  CodeGenerator extends Visitor<String> {
     private void initializeVar(VariableDeclaration varDeclaration, boolean isField) {
         Type type = varDeclaration.getVarType();
         String name = varDeclaration.getVarName().getName();
-        String structName = currentStruct.getStructName().getName();
         if(isField)
             addCommand("aload 0");
         addCommand(this.generateValue(varDeclaration.getDefaultValue(), type));
@@ -530,7 +542,7 @@ public class  CodeGenerator extends Visitor<String> {
         else if(type instanceof BoolType)
             addCommand("invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;");
         if(isField)
-            addCommand("putfield " + structName + "/" + name + " " + makeTypeSignature(type));
+            addCommand("putfield " + currentStruct.getStructName().getName() + "/" + name + " " + makeTypeSignature(type));
         else
             addCommand("astore " + slotOf(varDeclaration.getVarName().getName()));
     }
