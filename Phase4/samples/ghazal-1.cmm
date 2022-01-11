@@ -1,0 +1,8 @@
+main() begin
+    list #int a;
+    append(a, 1);
+    append(a, 2);
+    list #int b;
+    b = a;
+    display(b[1])
+end

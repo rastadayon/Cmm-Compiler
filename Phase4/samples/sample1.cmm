@@ -20,7 +20,6 @@ int getSum(list #struct Order orders) begin
     int total = 0
     int current
     while i < size(orders) begin
-        display(orders[i].product.price)
         current = orders[i].product.price * orders[i].quantity + orders[i].quantity * 100 - orders[i].product.price / 100;
         total = total + current
         i = i + 1

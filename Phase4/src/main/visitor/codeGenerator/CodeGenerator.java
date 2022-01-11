@@ -480,6 +480,7 @@ public class  CodeGenerator extends Visitor<String> {
                 secondCommands = "new List" + "\n";
                 secondCommands += "dup\n";
                 secondCommands += binaryExpression.getSecondOperand().accept(this) + "\n";
+
                 secondCommands += "invokespecial List/<init>(LList;)V";
             }
             if (binaryExpression.getFirstOperand() instanceof Identifier) {
@@ -787,9 +788,16 @@ public class  CodeGenerator extends Visitor<String> {
             commands += "astore " + tempVar + "\n";
             commands += "new List\n";
             commands += "dup\n";
-            commands += "aload " + tempVar + "\n";
-            commands += "invokespecial List/<init>(Ljava/util/ArrayList;)V";
-            --(this.tempVarSlot);
+            if (expr == null) {
+                commands += "aload " + tempVar + "\n";
+                commands += "invokespecial List/<init>(Ljava/util/ArrayList;)V";
+                --(this.tempVarSlot);
+            }
+            else {
+                commands += expr.accept(this);
+                commands += "\ninvokespecial List/<init>(LList;)V";
+
+            }
             return commands;
         }
         return null;
