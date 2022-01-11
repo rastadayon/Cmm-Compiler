@@ -28,32 +28,20 @@
 		astore 4
 		aconst_null
 		astore 5
-		ldc 0
-		dup
-		invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;
-		astore 1
-		pop
-	Label_0:
-		aload 1
-		invokevirtual java/lang/Integer/intValue()I
-		ldc 4
-		if_icmpge Label_2
-		ldc 1
-		goto Label_3
-		Label_2:
-		ldc 0
-		Label_3:
-		ifeq Label_1
 		aconst_null
 		astore 6
-		
+		aconst_null
+		astore 7
+		aconst_null
+		astore 8
+		aconst_null
+		astore 9
+		aload 6
+		ldc 0
+		dup_x1
+		invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;
+		putfield ProductCatalog/id Ljava/lang/Integer;
 		pop
-		aload 3
-		aload 7
-		invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z
-		pop
-		goto Label_0
-	Label_1:
 		return
 .end method
 		 

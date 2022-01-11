@@ -147,8 +147,9 @@ public class  CodeGenerator extends Visitor<String> {
                 for (Statement statement : ((BlockStmt) ((MainDeclaration) currentFunction).getBody()).getStatements()) {
                     if (statement instanceof VarDecStmt) {
                         for (VariableDeclaration varDec : ((VarDecStmt) statement).getVars()) {
-                            if (varDec.getVarName().getName().equals(identifier))
+                            if (varDec.getVarName().getName().equals(identifier)) {
                                 return count;
+                            }
                             count++;
                         }
                     } else
@@ -532,12 +533,15 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(StructAccess structAccess){
         //todo: done:)
+        System.out.println("ghazal");
         Type memberType = structAccess.accept(expressionTypeChecker);
         Type instanceType = structAccess.getInstance().accept(expressionTypeChecker);
+        System.out.println(instanceType);
         String memberName = structAccess.getElement().getName();
         String commands = "";
         if(instanceType instanceof StructType) {
             String structName = ((StructType) instanceType).getStructName().getName();
+            System.out.println(structName);
             try {
                 SymbolTable structSymbolTable = ((StructSymbolTableItem) SymbolTable.root.getItem(StructSymbolTableItem.START_KEY + structName)).getStructSymbolTable();
                 try {
@@ -548,14 +552,10 @@ public class  CodeGenerator extends Visitor<String> {
                         commands += "\ninvokevirtual java/lang/Integer/intValue()I";
                     else if(memberType instanceof  BoolType)
                         commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
-                } catch (ItemNotFoundException memberIsMethod) {
-                    commands += "new Fptr\n";
-                    commands += "dup\n";
-                    commands += structAccess.getInstance().accept(this) + "\n";
-                    commands += "ldc \"" + memberName + "\"\n";
-                    commands += "invokespecial Fptr/<init>(Ljava/lang/Object;Ljava/lang/String;)V";
+                } catch (ItemNotFoundException memberNotFound) {
+                    //unreachable
                 }
-            } catch (ItemNotFoundException classNotFound) {
+            } catch (ItemNotFoundException structNotFound) {
             }
         }
         return commands;
