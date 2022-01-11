@@ -480,7 +480,6 @@ public class  CodeGenerator extends Visitor<String> {
                 secondCommands = "new List" + "\n";
                 secondCommands += "dup\n";
                 secondCommands += binaryExpression.getSecondOperand().accept(this) + "\n";
-
                 secondCommands += "invokespecial List/<init>(LList;)V";
             }
             if (binaryExpression.getFirstOperand() instanceof Identifier) {
@@ -565,17 +564,20 @@ public class  CodeGenerator extends Visitor<String> {
         Type type = identifier.accept(expressionTypeChecker);
         int slot = slotOf(identifier.getName());
         commands += "aload " + slot;
-        if(type instanceof IntType)
-                commands += "\ninvokevirtual java/lang/Integer/intValue()I";
-        else if(type instanceof  BoolType)
-            commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
-        else if(type instanceof FptrType) {
+        try {
+            String funcKey = FunctionSymbolTableItem.START_KEY + identifier.getName();
+            FunctionSymbolTableItem functionItem = (FunctionSymbolTableItem) SymbolTable.root.getItem(funcKey);
             commands = "";
             commands += "\nnew Fptr\n";
             commands += "dup\n";
             commands += "aload 0\n";
             commands += "ldc \"" + identifier.getName() + "\"";
             commands += "\ninvokespecial Fptr/<init>(Ljava/lang/Object;Ljava/lang/String;)V";
+        }catch (ItemNotFoundException e) {
+            if (type instanceof IntType)
+                commands += "\ninvokevirtual java/lang/Integer/intValue()I";
+            else if (type instanceof BoolType)
+                commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
         }
         return commands;
     }
@@ -781,23 +783,16 @@ public class  CodeGenerator extends Visitor<String> {
         }
         else if(type instanceof ListType) {
             String commands = "";
+            commands += "new List\n";
+            commands += "dup\n";
             commands += "new java/util/ArrayList\n";
             commands += "dup\n";
             commands += "invokespecial java/util/ArrayList/<init>()V\n";
+            commands += "invokespecial List/<init>(Ljava/util/ArrayList;)V\n";
             int tempVar = slotOf("");
             commands += "astore " + tempVar + "\n";
-            commands += "new List\n";
-            commands += "dup\n";
-            if (expr == null) {
-                commands += "aload " + tempVar + "\n";
-                commands += "invokespecial List/<init>(Ljava/util/ArrayList;)V";
-                --(this.tempVarSlot);
-            }
-            else {
-                commands += expr.accept(this);
-                commands += "\ninvokespecial List/<init>(LList;)V";
-
-            }
+            commands += "aload " + tempVar + "\n";
+            --(this.tempVarSlot);
             return commands;
         }
         return null;
