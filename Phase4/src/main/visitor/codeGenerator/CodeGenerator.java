@@ -34,11 +34,11 @@ public class  CodeGenerator extends Visitor<String> {
     private boolean isInStruct = false;
     private boolean hasReturn = false;
 
-    private String STRUCT_PARENT = "java/lang/Object\n ";
-    private String int_TO_Int_COMMAND = "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;\n ";
-    private String Int_TO_int_COMMAND = "invokevirtual java/lang/Integer/intValue()I";
-    private String bool_TO_Bool_COMMAND = "invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;\n ";
-    private String Bool_TO_bool_COMMAND = "invokevirtual java/lang/Boolean/booleanValue()Z\n ";
+    private String STRUCT_PARENT = "java/lang/Object\n";
+    private String int_TO_Int_COMMAND = "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;\n";
+    private String Int_TO_int_COMMAND = "invokevirtual java/lang/Integer/intValue()I\n";
+    private String bool_TO_Bool_COMMAND = "invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;\n";
+    private String Bool_TO_bool_COMMAND = "invokevirtual java/lang/Boolean/booleanValue()Z\n";
 
     private void copyFile(String toBeCopied, String toBePasted) {
         try {
@@ -314,7 +314,6 @@ public class  CodeGenerator extends Visitor<String> {
         addCommand(conditionalStmt.getCondition().accept(this));
         addCommand("ifeq " + elseLabel);
         conditionalStmt.getThenBody().accept(this);
-        //if(!(conditionalStmt.getThenBody().accept(this.typeChecker)).doesReturn)
         addCommand("goto " + exitLabel);
         addCommand(elseLabel + ":");
         if(conditionalStmt.getElseBody() != null)
@@ -327,7 +326,7 @@ public class  CodeGenerator extends Visitor<String> {
     public String visit(FunctionCallStmt functionCallStmt) {
         //todo: done:)
         this.expressionTypeChecker.setInFunctionCallStmt(true);
-        functionCallStmt.getFunctionCall().accept(this);
+        addCommand(functionCallStmt.getFunctionCall().accept(this));
         this.expressionTypeChecker.setInFunctionCallStmt(false);
         addCommand("pop");
         return null;
@@ -533,15 +532,12 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(StructAccess structAccess){
         //todo: done:)
-        System.out.println("ghazal");
         Type memberType = structAccess.accept(expressionTypeChecker);
         Type instanceType = structAccess.getInstance().accept(expressionTypeChecker);
-        System.out.println(instanceType);
         String memberName = structAccess.getElement().getName();
         String commands = "";
         if(instanceType instanceof StructType) {
             String structName = ((StructType) instanceType).getStructName().getName();
-            System.out.println(structName);
             try {
                 SymbolTable structSymbolTable = ((StructSymbolTableItem) SymbolTable.root.getItem(StructSymbolTableItem.START_KEY + structName)).getStructSymbolTable();
                 try {
@@ -566,15 +562,18 @@ public class  CodeGenerator extends Visitor<String> {
         //todo: done:?
         String commands = "";
         Type type = identifier.accept(expressionTypeChecker);
-        commands += "aload " + slotOf(identifier.getName());
+        int slot = slotOf(identifier.getName());
+        commands += "aload " + slot;
         if(type instanceof IntType)
                 commands += "\ninvokevirtual java/lang/Integer/intValue()I";
         else if(type instanceof  BoolType)
             commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
         else if(type instanceof FptrType) {
+            commands = "";
             commands += "\nnew Fptr\n";
             commands += "dup\n";
             commands += "aload 0\n";
+            commands += "ldc \"" + identifier.getName() + "\"";
             commands += "\ninvokespecial Fptr/<init>(Ljava/lang/Object;Ljava/lang/String;)V";
         }
         return commands;
@@ -635,7 +634,7 @@ public class  CodeGenerator extends Visitor<String> {
         //todo: done:)
         String commands = "";
         commands += listSize.getArg().accept(this) + "\n";
-        commands += "invokevirtual java/util/ArrayList/size()I\n";
+        commands += "invokevirtual List/getSize()I\n";
         return commands;
     }
 
@@ -647,8 +646,7 @@ public class  CodeGenerator extends Visitor<String> {
         commands += listAppend.getElementArg().accept(this) + "\n";
         Type type = listAppend.getElementArg().accept(expressionTypeChecker);
         commands += convertPrimitiveToJavaObj(type);
-        commands += "invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n";
-        commands += "pop\n";
+        commands += "invokevirtual List/addElement(Ljava/lang/Object;)V\n";
         return commands;
     }
 
@@ -766,7 +764,15 @@ public class  CodeGenerator extends Visitor<String> {
             else
                 return expr.accept(this);
         }
-        else if(type instanceof StructType || type instanceof FptrType || type instanceof VoidType) {
+        else if(type instanceof StructType) {
+            String structName = ((StructType) type).getStructName().getName();
+            String commands = "";
+            commands += "new " + structName + "\n";
+            commands += "dup\n";
+            commands += "invokespecial " + structName + "/<init>()V\n";
+            return commands;
+        }
+        else if(type instanceof FptrType || type instanceof VoidType) {
             if(expr == null)
                 return "aconst_null";
             else
@@ -777,8 +783,13 @@ public class  CodeGenerator extends Visitor<String> {
             commands += "new java/util/ArrayList\n";
             commands += "dup\n";
             commands += "invokespecial java/util/ArrayList/<init>()V\n";
-            //int tempVar = slotOf("");
-            //commands += "astore " + tempVar + "\n";
+            int tempVar = slotOf("");
+            commands += "astore " + tempVar + "\n";
+            commands += "new List\n";
+            commands += "dup\n";
+            commands += "aload " + tempVar + "\n";
+            commands += "invokespecial List/<init>(Ljava/util/ArrayList;)V";
+            --(this.tempVarSlot);
             return commands;
         }
         return null;

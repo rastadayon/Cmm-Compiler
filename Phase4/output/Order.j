@@ -13,7 +13,9 @@
 		invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;
 		putfield Order/quantity Ljava/lang/Integer;
 		aload 0
-		aconst_null
+		new ProductCatalog
+		dup
+		invokespecial ProductCatalog/<init>()V
 		putfield Order/product LProductCatalog;
 		return
 .end method
