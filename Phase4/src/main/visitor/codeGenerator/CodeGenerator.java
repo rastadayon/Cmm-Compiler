@@ -34,11 +34,11 @@ public class  CodeGenerator extends Visitor<String> {
     private boolean isInStruct = false;
     private boolean hasReturn = false;
 
-    private String STRUCT_PARENT = "java/lang/Object";
-    private String int_TO_Int_COMMAND = "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;";
+    private String STRUCT_PARENT = "java/lang/Object\n ";
+    private String int_TO_Int_COMMAND = "invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;\n ";
     private String Int_TO_int_COMMAND = "invokevirtual java/lang/Integer/intValue()I";
-    private String bool_TO_Bool_COMMAND = "invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;";
-    private String Bool_TO_bool_COMMAND = "invokevirtual java/lang/Boolean/booleanValue()Z";
+    private String bool_TO_Bool_COMMAND = "invokestatic java/lang/Boolean/valueOf(Z)Ljava/lang/Boolean;\n ";
+    private String Bool_TO_bool_COMMAND = "invokevirtual java/lang/Boolean/booleanValue()Z\n ";
 
     private void copyFile(String toBeCopied, String toBePasted) {
         try {
@@ -181,6 +181,7 @@ public class  CodeGenerator extends Visitor<String> {
         program.getMain().accept(this);
 
         for (FunctionDeclaration functionDeclaration: program.getFunctions()){
+            //addStaticMainMethod();
             this.currentFunction = functionDeclaration;
             functionDeclaration.accept(this);
         }
@@ -201,10 +202,11 @@ public class  CodeGenerator extends Visitor<String> {
         String structName = structDeclaration.getStructName().getName();
         addCommand(".class public " + structName );
         addCommand(".super java/lang/Object\n ");
+        isInStruct = true;
 
         structDeclaration.getBody().accept(this);
         addDefaultConstructor();
-
+        isInStruct = false;
         SymbolTable.pop();
         return null;
     }
@@ -247,11 +249,14 @@ public class  CodeGenerator extends Visitor<String> {
         }
 
         //todo: done:)
-        String argsSignature = "";
-        addCommand(".method public <init>(" + argsSignature + ")V");
+        addCommand(".class public Main" );
+        addCommand(".super java/lang/Object\n");
+        addStaticMainMethod();
+        addCommand(".method public <init>()V");
         addCommand(".limit stack 128");
         addCommand(".limit locals 128");
 
+        addCommand("aload 0");
         addCommand("invokespecial java/lang/Object/<init>()V");
 
         mainDeclaration.getBody().accept(this);
@@ -361,7 +366,18 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(LoopStmt loopStmt) {
-        //todo
+        //todo: done:)
+        String startLabel = getFreshLabel();
+        String exitLabel = getFreshLabel();
+        addCommand(startLabel + ":");
+        if(loopStmt.getIsDoWhile()) {
+            loopStmt.getBody().accept(this);
+        }
+        addCommand(loopStmt.getCondition().accept(this));
+        addCommand("ifeq " + exitLabel);
+        loopStmt.getBody().accept(this);
+        addCommand("goto " + startLabel);
+        addCommand(exitLabel + ":");
         return null;
     }
 
@@ -378,7 +394,7 @@ public class  CodeGenerator extends Visitor<String> {
     public String visit(ListAppendStmt listAppendStmt) {
         //todo: done:)
         this.expressionTypeChecker.setInFunctionCallStmt(true);
-        listAppendStmt.getListAppendExpr().accept(this);
+        addCommand(listAppendStmt.getListAppendExpr().accept(this));
         this.expressionTypeChecker.setInFunctionCallStmt(false);
         return null;
     }
@@ -386,7 +402,7 @@ public class  CodeGenerator extends Visitor<String> {
     @Override
     public String visit(ListSizeStmt listSizeStmt) {
         //todo: done:)
-        listSizeStmt.accept(this);
+        addCommand(listSizeStmt.getListSizeExpr().accept(this));
         addCommand("pop");
         return null;
     }
@@ -547,20 +563,19 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(Identifier identifier){
-        //todo
+        //todo: done:?
         String commands = "";
-        try {
-            String key = FunctionSymbolTableItem.START_KEY + identifier.getName();
-            FunctionSymbolTableItem funcSymItem = (FunctionSymbolTableItem) SymbolTable.root.getItem(key);
-            //Type type = new FptrType(funcSymItem.getArgTypes(), funcSymItem.getReturnType());
-        } catch (ItemNotFoundException e) {
-            Type type = identifier.accept(expressionTypeChecker);
-            commands += "aload " + slotOf(identifier.getName());
-            if(type instanceof IntType)
+        Type type = identifier.accept(expressionTypeChecker);
+        commands += "aload " + slotOf(identifier.getName());
+        if(type instanceof IntType)
                 commands += "\ninvokevirtual java/lang/Integer/intValue()I";
-            else if(type instanceof  BoolType)
-                commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
-            return commands;
+        else if(type instanceof  BoolType)
+            commands += "\ninvokevirtual java/lang/Boolean/booleanValue()Z";
+        else if(type instanceof FptrType) {
+            commands += "\nnew Fptr\n";
+            commands += "dup\n";
+            commands += "aload 0\n";
+            commands += "\ninvokespecial Fptr/<init>(Ljava/lang/Object;Ljava/lang/String;)V";
         }
         return commands;
     }
@@ -617,14 +632,24 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(ListSize listSize){
-        //todo
-        return null;
+        //todo: done:)
+        String commands = "";
+        commands += listSize.getArg().accept(this) + "\n";
+        commands += "invokevirtual java/util/ArrayList/size()I\n";
+        return commands;
     }
 
     @Override
     public String visit(ListAppend listAppend) {
-        //todo
-        return null;
+        //todo: done:)
+        String commands = "";
+        commands += listAppend.getListArg().accept(this) + "\n";
+        commands += listAppend.getElementArg().accept(this) + "\n";
+        Type type = listAppend.getElementArg().accept(expressionTypeChecker);
+        commands += convertPrimitiveToJavaObj(type);
+        commands += "invokevirtual java/util/ArrayList/add(Ljava/lang/Object;)Z\n";
+        commands += "pop\n";
+        return commands;
     }
 
     @Override
@@ -751,9 +776,9 @@ public class  CodeGenerator extends Visitor<String> {
             String commands = "";
             commands += "new java/util/ArrayList\n";
             commands += "dup\n";
-            commands += "invokespecial java/util/ArrayList/<Object>()V\n";
-            int tempVar = slotOf("");
-            commands += "astore " + tempVar + "\n";
+            commands += "invokespecial java/util/ArrayList/<init>()V\n";
+            //int tempVar = slotOf("");
+            //commands += "astore " + tempVar + "\n";
             return commands;
         }
         return null;

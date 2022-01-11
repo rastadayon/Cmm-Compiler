@@ -19,11 +19,11 @@ int getSum(list #struct Order orders) begin
     int i = 0
     int total = 0
     int current
-    while i < size(orders) begin
+    /*while i < size(orders) begin
         current = orders[i].product.price * orders[i].quantity + orders[i].quantity * 100 - orders[i].product.price / 100;
         total = total + current
         i = i + 1
-    end
+    end*/
     return total
 end
 
@@ -38,10 +38,10 @@ main() begin
         struct ProductCatalog temp
         temp.id = i
         append(productCatalog, temp)
-        i = i + 1
+        /*i = i + 1*/
     end
 
-    productCatalog[0].price = 5000
+    /*productCatalog[0].price = 5000
     productCatalog[1].price = 4000
     productCatalog[2].price = 2000
     productCatalog[3].price = 8000
@@ -53,7 +53,7 @@ main() begin
         i = i + 1
     end
     total = getSum(orders)
-    display(total)
+    display(total)*/
 end
 
 

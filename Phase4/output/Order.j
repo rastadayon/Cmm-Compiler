@@ -1,11 +1,8 @@
 .class public Order
 .super java/lang/Object
 		 
-		ldc 0
-		invokestatic java/lang/Integer/valueOf(I)Ljava/lang/Integer;
-		astore 2
-		aconst_null
-		astore 3
+.field quantity Ljava/lang/Integer;
+.field product LProductCatalog;
 .method public <init>()V
 .limit stack 128
 .limit locals 128
