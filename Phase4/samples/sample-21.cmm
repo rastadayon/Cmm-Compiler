@@ -12,11 +12,18 @@ main() begin
 	append(li, 4)
 	append(li, 0)
 
-	while(i < size(li)) begin
+	/*while(i < size(li)) begin
 		sum = sum + li[i];
         display(sum);
         i = i + 1
+	end*/
+
+	do begin
+	    sum = sum + li[i];
+        display(sum);
+        i = i + 1
 	end
+	while(i < size(li)-1)
 	
 	display(sum * 2);
 end

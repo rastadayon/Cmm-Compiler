@@ -163,7 +163,6 @@ public class  CodeGenerator extends Visitor<String> {
                 }
             }
         }
-        //first empty var
         return count + (tempVarSlot++);
     }
 
@@ -182,7 +181,6 @@ public class  CodeGenerator extends Visitor<String> {
         program.getMain().accept(this);
 
         for (FunctionDeclaration functionDeclaration: program.getFunctions()){
-            //addStaticMainMethod();
             this.currentFunction = functionDeclaration;
             functionDeclaration.accept(this);
         }
@@ -199,7 +197,7 @@ public class  CodeGenerator extends Visitor<String> {
         }
         createFile(structDeclaration.getStructName().getName());
 
-        //todo: done:? list values
+        //todo: done:)
         String structName = structDeclaration.getStructName().getName();
         addCommand(".class public " + structName );
         addCommand(".super java/lang/Object\n ");
@@ -234,6 +232,8 @@ public class  CodeGenerator extends Visitor<String> {
             addCommand("return");
         else
             hasReturn = false;
+        if(functionDeclaration.getReturnType() instanceof VoidType)
+            addCommand("return");
         addCommand(".end method\n ");
 
         SymbolTable.pop();
@@ -308,7 +308,7 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(ConditionalStmt conditionalStmt) {
-        //todo: done:?
+        //todo: done:)
         String elseLabel = getFreshLabel();
         String exitLabel = getFreshLabel();
         addCommand(conditionalStmt.getCondition().accept(this));
@@ -559,7 +559,7 @@ public class  CodeGenerator extends Visitor<String> {
 
     @Override
     public String visit(Identifier identifier){
-        //todo: done:?
+        //todo: done:)
         String commands = "";
         Type type = identifier.accept(expressionTypeChecker);
         int slot = slotOf(identifier.getName());
